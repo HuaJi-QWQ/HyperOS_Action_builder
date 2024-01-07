@@ -433,12 +433,6 @@ base_rom_code=$(< build/portrom/images/vendor/build.prop grep "ro.product.vendor
 port_rom_code=$(< build/portrom/images/product/etc/build.prop grep "ro.product.product.name" |awk 'NR==1' |cut -d '=' -f 2)
 green "机型代号: 底包为 [${base_rom_code}], 移植包为 [${port_rom_code}]" "Device Code: BASEROM: [${base_rom_code}], PORTROM: [${port_rom_code}]"
 
-if grep -q "ro.build.ab_update=true" build/portrom/images/vendor/build.prop;  then
-    is_ab_device=true
-else
-    is_ab_device=false
-
-fi
 
 baseAospFrameworkResOverlay=$(find build/baserom/images/product -type f -name "AospFrameworkResOverlay.apk")
 portAospFrameworkResOverlay=$(find build/portrom/images/product -type f -name "AospFrameworkResOverlay.apk")
@@ -723,25 +717,6 @@ if [[ -d "devices/common" ]];then
     fi
 fi
 
-
-
-# data 加密
-remove_data_encrypt=$(grep "remove_data_encryption" bin/port_config |cut -d '=' -f 2)
-if [ ${remove_data_encrypt} = "true" ];then
-    blue "去除data加密"
-    for fstab in $(find build/portrom/images -type f -name "fstab.*");do
-		blue "Target: $fstab"
-		sed -i "s/,fileencryption=aes-256-xts:aes-256-cts:v2+inlinecrypt_optimized+wrappedkey_v0//g" $fstab
-		sed -i "s/,fileencryption=aes-256-xts:aes-256-cts:v2+emmc_optimized+wrappedkey_v0//g" $fstab
-		sed -i "s/,fileencryption=aes-256-xts:aes-256-cts:v2//g" $fstab
-		sed -i "s/,metadata_encryption=aes-256-xts:wrappedkey_v0//g" $fstab
-		sed -i "s/,fileencryption=aes-256-xts:wrappedkey_v0//g" $fstab
-		sed -i "s/,metadata_encryption=aes-256-xts//g" $fstab
-		sed -i "s/,fileencryption=aes-256-xts//g" $fstab
-        sed -i "s/,fileencryption=ice//g" $fstab
-		sed -i "s/fileencryption/encryptable/g" $fstab
-	done
-fi
 
 for pname in ${port_partition};do
     rm -rf build/portrom/images/${pname}.img
