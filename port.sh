@@ -537,8 +537,8 @@ cp -rf devices/nfc/lib64/vendor.nxp.hardware.nfc@2.0.so build/portrom/images/ven
 green "NFC修复成功"
 
 green "正在精简无用的 VNDK"
+rm -rf build/baserom/images/system_ext/apex/com.android.vndk.v30.apex
 rm -rf build/baserom/images/system_ext/apex/com.android.vndk.v31.apex
-rm -rf build/baserom/images/system_ext/apex/com.android.vndk.v32.apex
 rm -rf build/baserom/images/system_ext/apex/com.android.vndk.v33.apex
 green "精简完毕"
 
@@ -603,7 +603,7 @@ if [ ! -f "${port_vndk}" ]; then
     cp -rf "${base_vndk}" "build/portrom/images/system_ext/apex/"
 fi
 
-green "正在替换徕卡相机APK"
+green "正在替换相机APK"
 rm -rf build/portrom/images/product/priv-app/MiuiCamera
 mkdir build/portrom/images/product/priv-app/MiuiCamera
 cp -rf devices/MIUIcamera.apk build/portrom/images/product/priv-app/MiuiCamera/
@@ -677,82 +677,9 @@ fi
 
 
 yellow "删除多余的App" "Debloating..." 
-
-
 rm -rf build/portrom/images/product/etc/auto-install*
-rm -rf build/portrom/images/product/data-app/*GalleryLockscreen* >/dev/null 2>&1
-
-mkdir -p tmp/app
-kept_data_apps=("Weather" "DeskClock" "Gallery" "SoundRecorder" "ScreenRecorder" "Calculator" "CleanMaster" "Calendar" "Compass" "Notes")
-for app in "${kept_data_apps[@]}"; do
-    mv build/portrom/images/product/data-app/*"${app}"* tmp/app/ >/dev/null 2>&1
-done
-
-rm -rf build/portrom/images/product/data-app/*
-cp -rf tmp/app/* build/portrom/images/product/data-app
-rm -rf tmp/app
-rm -rf build/portrom/images/product/priv-app/MIUIMusicT
-rm -rf build/portrom/images/product/priv-app/MIUIVideo
-rm -rf build/portrom/images/product/app/AnalyticsCore
-rm -rf build/portrom/images/product/app/MiGameService_8450
-rm -rf build/portrom/images/product/app/system
-rm -rf build/portrom/images/product/app/Updater
-rm -rf build/portrom/images/product/priv-app/MIUIBrowser
-rm -rf build/portrom/images/product/priv-app/MIUIAICR
-
-rm -rf build/portrom/images/system/verity_key
-rm -rf build/portrom/images/vendor/verity_key
-rm -rf build/portrom/images/product/verity_key
-rm -rf build/portrom/images/system/recovery-from-boot.p
-rm -rf build/portrom/images/vendor/recovery-from-boot.p
-rm -rf build/portrom/images/product/recovery-from-boot.p
-rm -rf build/portrom/images/product/media/theme/miui_mod_icons/com.google.android.apps.nbu*
-rm -rf build/portrom/images/product/media/theme/miui_mod_icons/dynamic/com.google.android.apps.nbu*
-
-# build.prop 修改
-blue "正在修改 build.prop" "Modifying build.prop"
-# change the locale to English
-export LC_ALL=en_US.UTF-8
-buildDate=$(date -u +"%a %b %d %H:%M:%S UTC %Y")
-buildUtc=$(date +%s)
-for i in $(find build/portrom/images -type f -name "build.prop");do
-    blue "正在处理 ${i}" "modifying ${i}"
-    sed -i "s/ro.build.date=.*/ro.build.date=${buildDate}/g" ${i}
-    sed -i "s/ro.build.date.utc=.*/ro.build.date.utc=${buildUtc}/g" ${i}
-    sed -i "s/ro.odm.build.date=.*/ro.odm.build.date=${buildDate}/g" ${i}
-    sed -i "s/ro.odm.build.date.utc=.*/ro.odm.build.date.utc=${buildUtc}/g" ${i}
-    sed -i "s/ro.vendor.build.date=.*/ro.vendor.build.date=${buildDate}/g" ${i}
-    sed -i "s/ro.vendor.build.date.utc=.*/ro.vendor.build.date.utc=${buildUtc}/g" ${i}
-    sed -i "s/ro.system.build.date=.*/ro.system.build.date=${buildDate}/g" ${i}
-    sed -i "s/ro.system.build.date.utc=.*/ro.system.build.date.utc=${buildUtc}/g" ${i}
-    sed -i "s/ro.product.build.date=.*/ro.product.build.date=${buildDate}/g" ${i}
-    sed -i "s/ro.product.build.date.utc=.*/ro.product.build.date.utc=${buildUtc}/g" ${i}
-    sed -i "s/ro.system_ext.build.date=.*/ro.system_ext.build.date=${buildDate}/g" ${i}
-    sed -i "s/ro.system_ext.build.date.utc=.*/ro.system_ext.build.date.utc=${buildUtc}/g" ${i}
-   
-    sed -i "s/ro.product.device=.*/ro.product.device=${base_rom_code}/g" ${i}
-    sed -i "s/ro.product.product.name=.*/ro.product.product.name=${base_rom_code}/g" ${i}
-    sed -i "s/ro.product.odm.device=.*/ro.product.odm.device=${base_rom_code}/g" ${i}
-    sed -i "s/ro.product.vendor.device=.*/ro.product.vendor.device=${base_rom_code}/g" ${i}
-    sed -i "s/ro.product.system.device=.*/ro.product.system.device=${base_rom_code}/g" ${i}
-    sed -i "s/ro.product.board=.*/ro.product.board=${base_rom_code}/g" ${i}
-    sed -i "s/ro.product.system_ext.device=.*/ro.product.system_ext.device=${base_rom_code}/g" ${i}
-    sed -i "s/persist.sys.timezone=.*/persist.sys.timezone=Asia\/Shanghai/g" ${i}
-    sed -i "s/ro.product.mod_device=.*/ro.product.mod_device=${base_rom_code}/g" ${i}
-    #全局替换device_code
-    if [[ $port_mios_version_incremental != *DEV* ]];then
-        sed -i "s/$port_device_code/$base_device_code/g" ${i}
-    fi
-    # 添加build user信息
-    sed -i "s/ro.build.user=.*/ro.build.user=${build_user}/g" ${i}
-    sed -i "s/ro.build.host=.*/ro.build.host=${build_host}/g" ${i}
-    
-done
 
 # 修复各种疑难杂症
-echo "# tosasitill here made with love" >> build/portrom/images/product/etc/build.prop
-echo "ro.miui.cust_erofs=0" >> build/portrom/images/product/etc/build.prop
-echo "# tosasitill here 0202 & 0227" >> build/portrom/images/system/system/build.prop
 echo "ro.crypto.state=encrypted" >> build/portrom/images/system/system/build.prop
 echo "debug.game.video.support=true" >> build/portrom/images/system/system/build.prop
 echo "debug.game.video.speed=true" >> build/portrom/images/system/system/build.prop
@@ -796,16 +723,7 @@ if [[ -d "devices/common" ]];then
     fi
 fi
 
-# 去除avb校验
-blue "去除avb校验" "Disable avb verification."
-for fstab in $(find build/portrom/images/ -type f -name "fstab.*");do
-    blue "Target: $fstab"
-    sed -i "s/,avb_keys=.*avbpubkey//g" $fstab
-    sed -i "s/,avb=vbmeta_system//g" $fstab
-    sed -i "s/,avb=vbmeta_vendor//g" $fstab
-    sed -i "s/,avb=vbmeta//g" $fstab
-    sed -i "s/,avb//g" $fstab
-done
+
 
 # data 加密
 remove_data_encrypt=$(grep "remove_data_encryption" bin/port_config |cut -d '=' -f 2)
