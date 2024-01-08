@@ -10,9 +10,6 @@
 
 # 2023.12.26
 
-build_user="Bruce Teng, tosasitill"
-build_host="pangu-build-fuxi_tosasitill"
-
 # 底包和移植包为外部参数传入
 baserom="$1"
 portrom="$2"
@@ -185,33 +182,40 @@ start_time=$SECONDS
 compatible_matrix_matches_enabled=$(grep "compatible_matrix_matches_check" bin/port_config | cut -d '=' -f 2)
 
 # 检查为本地包还是链接
-if [ ! -f "${baserom}" ] && [ "$(echo $baserom |grep http)" != "" ];then
-    blue "底包为一个链接，正在尝试下载" "Download link detected, start downloding.."
-    aria2c --check-certificate=false --max-download-limit=1024M --file-allocation=none -s10 -x10 -j10 ${baserom}
-    baserom=$(basename ${baserom} | sed 's/\?t.*//')
-    if [ ! -f "${baserom}" ];then
-        error "下载错误" "Download error!"
+if [ ! -f "${BASEROM}" ] && [ "$(echo $BASEROM |grep http)" != "" ];then
+    Yellow "底包为一个链接，正在尝试下载"
+    aria2c --max-download-limit=1024M --file-allocation=none -s10 -x10 -j10 ${BASEROM}
+    BASEROM=$(basename ${BASEROM})
+    if [ ! -f "${BASEROM}" ];then
+        Error "下载错误"
     fi
-elif [ -f "${baserom}" ];then
-    green "底包: ${baserom}" "BASEROM: ${baserom}"
+elif [ -f "${BASEROM}" ];then
+    Green "底包: ${BASEROM}"
 else
-    error "底包参数错误" "BASEROM: Invalid parameter"
+    Error "底包参数错误"
     exit
 fi
 
-if [ ! -f "${portrom}" ] && [ "$(echo ${portrom} |grep http)" != "" ];then
-    blue "移植包为一个链接，正在尝试下载"  "Download link detected, start downloding.."
-    aria2c --header="Referer: https://hyper.tosasitill.top/" --max-download-limit=1024M --file-allocation=none -s10 -x10 -j10 ${portrom}
-    portrom=$(basename ${portrom} | sed 's/\?t.*//')
-    if [ ! -f "${portrom}" ];then
-        error "下载错误" "Download error!"
+if [ ! -f "${PORTROM}" ] && [ "$(echo ${PORTROM} |grep http)" != "" ];then
+    Yellow "移植包为一个链接，正在尝试下载"
+    aria2c --max-download-limit=1024M --file-allocation=none -s10 -x10 -j10 ${PORTROM}
+    BASEROM=$(basename ${PORTROM})
+    if [ ! -f "${PORTROM}" ];then
+        Error "下载错误"
     fi
-elif [ -f "${portrom}" ];then
-    green "移植包: ${portrom}" "PORTROM: ${portrom}"
+elif [ -f "${PORTROM}" ];then
+    Green "移植包: ${PORTROM}"
 else
-    error "移植包参数错误" "PORTROM: Invalid parameter"
+    Error "移植包参数错误"
     exit
 fi
+
+if [ "$(echo $BASEROM |grep miui_)" != "" ];then
+    deviceCode=$(basename $BASEROM |cut -d '_' -f 2)
+else
+    deviceCode="YourDevice"
+fi
+
 
 if [ "$(echo $baserom |grep miui_)" != "" ];then
     device_code=$(basename $baserom |cut -d '_' -f 2)
