@@ -1,11 +1,11 @@
-name: build_haydn_hos_1drv
+name: build_haydn_hos
 on:
   workflow_dispatch:
     inputs:
       STOCK_URL:
         description: "待操作的底包/xiaomi.eu底包下载地址"
         required: true
-        default: 'https://bigota.d.miui.com/V14.0.7.0.TKKCNXM/miui_HAYDN_V14.0.7.0.TKKCNXM_62f554b4aa_13.0.zip'
+        default: 'https://orig.bigota.d.miui.com/OS1.0.5.0.UMWCNXM/miui_SKY_OS1.0.5.0.UMWCNXM_eeb6f6c209_14.0.zip'
       PORT_URL:
         description: "待操作的移植包下载地址"
         required: true
@@ -36,8 +36,7 @@ jobs:
           pip3 install requests
           pip3 install beautifulsoup4
           pip3 install --ignore-installed pyyaml
-          curl https://rclone.org/install.sh | sudo bash
-          
+
       - name: Add MIUI/HyperOS ROMs hosts to /etc/hosts
         run: |
           sudo echo "111.31.36.169 bigota.d.miui.com" | sudo tee -a /etc/hosts
@@ -61,6 +60,5 @@ jobs:
         uses: ncipollo/release-action@v1.12.0
         with:
             artifacts: "/home/runner/work/HyperOS_Action_builder/HyperOS_Action_builder/hyperos_port/build/portrom/images/system/system/framework/services.jar"
-            bodyfile: "${{ github.workspace }}/info.md"
             tag: "OUTPUT_${{ env.BUILD_TIME }}_${{ github.run_id }}"
             token: ${{ secrets.GITHUB_TOKEN }}
