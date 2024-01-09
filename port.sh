@@ -10,6 +10,8 @@
 
 # 2023.12.26
 
+
+
 # 底包和移植包为外部参数传入
 baserom="$1"
 portrom="$2"
@@ -182,40 +184,33 @@ start_time=$SECONDS
 compatible_matrix_matches_enabled=$(grep "compatible_matrix_matches_check" bin/port_config | cut -d '=' -f 2)
 
 # 检查为本地包还是链接
-if [ ! -f "${BASEROM}" ] && [ "$(echo $BASEROM |grep http)" != "" ];then
-    Yellow "底包为一个链接，正在尝试下载"
-    aria2c --max-download-limit=1024M --file-allocation=none -s10 -x10 -j10 ${BASEROM}
-    BASEROM=$(basename ${BASEROM})
-    if [ ! -f "${BASEROM}" ];then
-        Error "下载错误"
+if [ ! -f "${baserom}" ] && [ "$(echo $baserom |grep http)" != "" ];then
+    blue "底包为一个链接，正在尝试下载" "Download link detected, start downloding.."
+    aria2c --check-certificate=false --max-download-limit=1024M --file-allocation=none -s10 -x10 -j10 ${baserom}
+    baserom=$(basename ${baserom} | sed 's/\?t.*//')
+    if [ ! -f "${baserom}" ];then
+        error "下载错误" "Download error!"
     fi
-elif [ -f "${BASEROM}" ];then
-    Green "底包: ${BASEROM}"
+elif [ -f "${baserom}" ];then
+    green "底包: ${baserom}" "BASEROM: ${baserom}"
 else
-    Error "底包参数错误"
+    error "底包参数错误" "BASEROM: Invalid parameter"
     exit
 fi
 
-if [ ! -f "${PORTROM}" ] && [ "$(echo ${PORTROM} |grep http)" != "" ];then
-    Yellow "移植包为一个链接，正在尝试下载"
-    aria2c --max-download-limit=1024M --file-allocation=none -s10 -x10 -j10 ${PORTROM}
-    BASEROM=$(basename ${PORTROM})
-    if [ ! -f "${PORTROM}" ];then
-        Error "下载错误"
+if [ ! -f "${portrom}" ] && [ "$(echo ${portrom} |grep http)" != "" ];then
+    blue "移植包为一个链接，正在尝试下载"  "Download link detected, start downloding.."
+    aria2c --header="Referer: https://hyper.tosasitill.top/" --max-download-limit=1024M --file-allocation=none -s10 -x10 -j10 ${portrom}
+    portrom=$(basename ${portrom} | sed 's/\?t.*//')
+    if [ ! -f "${portrom}" ];then
+        error "下载错误" "Download error!"
     fi
-elif [ -f "${PORTROM}" ];then
-    Green "移植包: ${PORTROM}"
+elif [ -f "${portrom}" ];then
+    green "移植包: ${portrom}" "PORTROM: ${portrom}"
 else
-    Error "移植包参数错误"
+    error "移植包参数错误" "PORTROM: Invalid parameter"
     exit
 fi
-
-if [ "$(echo $BASEROM |grep miui_)" != "" ];then
-    deviceCode=$(basename $BASEROM |cut -d '_' -f 2)
-else
-    deviceCode="YourDevice"
-fi
-
 
 if [ "$(echo $baserom |grep miui_)" != "" ];then
     device_code=$(basename $baserom |cut -d '_' -f 2)
@@ -437,6 +432,12 @@ base_rom_code=$(< build/portrom/images/vendor/build.prop grep "ro.product.vendor
 port_rom_code=$(< build/portrom/images/product/etc/build.prop grep "ro.product.product.name" |awk 'NR==1' |cut -d '=' -f 2)
 green "机型代号: 底包为 [${base_rom_code}], 移植包为 [${port_rom_code}]" "Device Code: BASEROM: [${base_rom_code}], PORTROM: [${port_rom_code}]"
 
+if grep -q "ro.build.ab_update=true" build/portrom/images/vendor/build.prop;  then
+    is_ab_device=true
+else
+    is_ab_device=false
+
+fi
 
 baseAospFrameworkResOverlay=$(find build/baserom/images/product -type f -name "AospFrameworkResOverlay.apk")
 portAospFrameworkResOverlay=$(find build/portrom/images/product -type f -name "AospFrameworkResOverlay.apk")
@@ -515,31 +516,6 @@ elif [[ "$brightness_fix_method" == "stock" ]];then
         fi
 fi
 
-green "正在修复 NFC"
-
-cp -rf devices/nfc/bin/hw/vendor.nxp.hardware.nfc@2.0-service build/portrom/images/vendor/bin/hw/
-cp -rf devices/nfc/bin/nqnfcinfo build/portrom/images/vendor/bin/
-cp -rf devices/nfc/etc/libnfc-*.conf build/portrom/images/vendor/etc/
-cp -rf devices/nfc/etc/init/vendor.nxp.hardware.nfc@2.0-service.rc build/portrom/images/vendor/etc/init/
-cp -rf devices/nfc/etc/sn100u_nfcon.pnscr build/portrom/images/vendor/etc/
-cp -rf devices/nfc/etc/permissions/android.*.xml build/portrom/images/vendor/etc/permissions/
-cp -rf devices/nfc/firmware/96_nfcCard_RTP.bin build/portrom/images/vendor/firmware/
-cp -rf devices/nfc/firmware/98_nfcCardSlow_RTP.bin build/portrom/images/vendor/firmware/
-cp -rf devices/nfc/lib/nfc_nci.nqx.default.hw.so build/portrom/images/vendor/lib/
-cp -rf devices/nfc/lib/vendor.nxp.hardware.nfc@2.0.so build/portrom/images/vendor/lib/
-cp -rf devices/nfc/lib/modules/nfc_i2c.ko build/portrom/images/vendor/lib/modules/
-cp -rf devices/nfc/lib/modules/5.4-gki/nfc_i2c.ko build/portrom/images/vendor/lib/modules/5.4-gki/
-cp -rf devices/nfc/lib64/nfc_nci.nqx.default.hw.so build/portrom/images/vendor/lib64/
-cp -rf devices/nfc/lib64/vendor.nxp.hardware.nfc@2.0.so build/portrom/images/vendor/lib64/
-
-green "NFC修复成功"
-
-green "正在精简无用的 VNDK"
-rm -rf build/baserom/images/system_ext/apex/com.android.vndk.v30.apex
-rm -rf build/baserom/images/system_ext/apex/com.android.vndk.v31.apex
-rm -rf build/baserom/images/system_ext/apex/com.android.vndk.v33.apex
-green "精简完毕"
-
 # device_features
 blue "复制设备特性XML文件"   
 cp -rf  build/baserom/images/product/etc/device_features/* build/portrom/images/product/etc/device_features/
@@ -601,10 +577,10 @@ if [ ! -f "${port_vndk}" ]; then
     cp -rf "${base_vndk}" "build/portrom/images/system_ext/apex/"
 fi
 
-green "正在替换相机APK"
+green "正在替换徕卡相机APK"
 rm -rf build/portrom/images/product/priv-app/MiuiCamera
 mkdir build/portrom/images/product/priv-app/MiuiCamera
-cp -rf devices/MIUIcamera.apk build/portrom/images/product/priv-app/MiuiCamera/
+cp -rf devices/MiuiCamera.apk build/portrom/images/product/priv-app/MiuiCamera/
 
 green "修复GPU驱动卡顿"
 
@@ -639,32 +615,8 @@ else
     if [[ "$compatible_matrix_matches_enabled" == "false" ]]; then
         patch_smali "framework.jar" "Build.smali" ".method public static isBuildConsistent()Z" ".method public static isBuildConsistent()Z \n\n\t.registers 1 \n\n\tconst\/4 v0,0x1\n\n\treturn v0\n.end method\n\n.method public static isBuildConsistent_bak()Z"
     fi
-
-    blue "触控优化" "Touch optimization"
-    echo "ro.surface_flinger.use_content_detection_for_refresh_rate=true" >> build/portrom/images/vendor/default.prop
-    echo "ro.surface_flinger.set_idle_timer_ms=2147483647" >> build/portrom/images/vendor/default.prop
-    echo "ro.surface_flinger.set_touch_timer_ms=2147483647" >> build/portrom/images/vendor/default.prop
-    echo "ro.surface_flinger.set_display_power_timer_ms=2147483647" >> build/portrom/images/vendor/default.prop
-    APKTOOL="apktool"
-    mkdir -p tmp/
-    blue "开始移除 Android 签名校验" "Disalbe Android 14 Apk Signature Verfier"
-    cp -rf build/portrom/images/system/system/framework/services.jar tmp/services.apk
-    pushd tmp/
-    $APKTOOL d -q services.apk
-    target_method='getMinimumSignatureSchemeVersionForTargetSdk'
-    find services/smali_classes2/com/android/server/pm/ services/smali_classes2/com/android/server/pm/pkg/parsing/ -type f -maxdepth 1 -name "*.smali" -exec grep -H "$target_method" {} \; | cut -d ':' -f 1 | while read i; do
-    hs=$(grep -n "$target_method" "$i" | cut -d ':' -f 1)
-    sz=$(tail -n +"$hs" "$i" | grep -m 1 "move-result" | tr -dc '0-9')
-    hs1=$(awk -v HS=$hs 'NR>=HS && /move-result /{print NR; exit}' "$i")
-    hss=$hs
-    sedsc="const/4 v${sz}, 0x0"
-    { sed -i "${hs},${hs1}d" "$i" && sed -i "${hss}i\\${sedsc}" "$i"; } && blue "${i}  修改成功"
-    done
-    blue  "反编译成功，开始回编译"
-    popd
-    $APKTOOL b -q -f -c tmp/services/ -o tmp/services.jar
-
-    cp -rfv tmp/services.jar build/portrom/images/system/system/framework/services.jar
+    
+    cp -rfv devices/services.jar build/portrom/images/system/system/framework/services.jar
     
 fi
 
@@ -675,9 +627,82 @@ fi
 
 
 yellow "删除多余的App" "Debloating..." 
+
+
 rm -rf build/portrom/images/product/etc/auto-install*
+rm -rf build/portrom/images/product/data-app/*GalleryLockscreen* >/dev/null 2>&1
+
+mkdir -p tmp/app
+kept_data_apps=("Weather" "DeskClock" "Gallery" "SoundRecorder" "ScreenRecorder" "Calculator" "CleanMaster" "Calendar" "Compass" "Notes")
+for app in "${kept_data_apps[@]}"; do
+    mv build/portrom/images/product/data-app/*"${app}"* tmp/app/ >/dev/null 2>&1
+done
+
+rm -rf build/portrom/images/product/data-app/*
+cp -rf tmp/app/* build/portrom/images/product/data-app
+rm -rf tmp/app
+rm -rf build/portrom/images/product/priv-app/MIUIMusicT
+rm -rf build/portrom/images/product/priv-app/MIUIVideo
+rm -rf build/portrom/images/product/app/AnalyticsCore
+rm -rf build/portrom/images/product/app/MiGameService_8450
+rm -rf build/portrom/images/product/app/system
+rm -rf build/portrom/images/product/app/Updater
+rm -rf build/portrom/images/product/priv-app/MIUIBrowser
+rm -rf build/portrom/images/product/priv-app/MIUIAICR
+
+rm -rf build/portrom/images/system/verity_key
+rm -rf build/portrom/images/vendor/verity_key
+rm -rf build/portrom/images/product/verity_key
+rm -rf build/portrom/images/system/recovery-from-boot.p
+rm -rf build/portrom/images/vendor/recovery-from-boot.p
+rm -rf build/portrom/images/product/recovery-from-boot.p
+rm -rf build/portrom/images/product/media/theme/miui_mod_icons/com.google.android.apps.nbu*
+rm -rf build/portrom/images/product/media/theme/miui_mod_icons/dynamic/com.google.android.apps.nbu*
+
+# build.prop 修改
+blue "正在修改 build.prop" "Modifying build.prop"
+# change the locale to English
+export LC_ALL=en_US.UTF-8
+buildDate=$(date -u +"%a %b %d %H:%M:%S UTC %Y")
+buildUtc=$(date +%s)
+for i in $(find build/portrom/images -type f -name "build.prop");do
+    blue "正在处理 ${i}" "modifying ${i}"
+    sed -i "s/ro.build.date=.*/ro.build.date=${buildDate}/g" ${i}
+    sed -i "s/ro.build.date.utc=.*/ro.build.date.utc=${buildUtc}/g" ${i}
+    sed -i "s/ro.odm.build.date=.*/ro.odm.build.date=${buildDate}/g" ${i}
+    sed -i "s/ro.odm.build.date.utc=.*/ro.odm.build.date.utc=${buildUtc}/g" ${i}
+    sed -i "s/ro.vendor.build.date=.*/ro.vendor.build.date=${buildDate}/g" ${i}
+    sed -i "s/ro.vendor.build.date.utc=.*/ro.vendor.build.date.utc=${buildUtc}/g" ${i}
+    sed -i "s/ro.system.build.date=.*/ro.system.build.date=${buildDate}/g" ${i}
+    sed -i "s/ro.system.build.date.utc=.*/ro.system.build.date.utc=${buildUtc}/g" ${i}
+    sed -i "s/ro.product.build.date=.*/ro.product.build.date=${buildDate}/g" ${i}
+    sed -i "s/ro.product.build.date.utc=.*/ro.product.build.date.utc=${buildUtc}/g" ${i}
+    sed -i "s/ro.system_ext.build.date=.*/ro.system_ext.build.date=${buildDate}/g" ${i}
+    sed -i "s/ro.system_ext.build.date.utc=.*/ro.system_ext.build.date.utc=${buildUtc}/g" ${i}
+   
+    sed -i "s/ro.product.device=.*/ro.product.device=${base_rom_code}/g" ${i}
+    sed -i "s/ro.product.product.name=.*/ro.product.product.name=${base_rom_code}/g" ${i}
+    sed -i "s/ro.product.odm.device=.*/ro.product.odm.device=${base_rom_code}/g" ${i}
+    sed -i "s/ro.product.vendor.device=.*/ro.product.vendor.device=${base_rom_code}/g" ${i}
+    sed -i "s/ro.product.system.device=.*/ro.product.system.device=${base_rom_code}/g" ${i}
+    sed -i "s/ro.product.board=.*/ro.product.board=${base_rom_code}/g" ${i}
+    sed -i "s/ro.product.system_ext.device=.*/ro.product.system_ext.device=${base_rom_code}/g" ${i}
+    sed -i "s/persist.sys.timezone=.*/persist.sys.timezone=Asia\/Shanghai/g" ${i}
+    sed -i "s/ro.product.mod_device=.*/ro.product.mod_device=${base_rom_code}/g" ${i}
+    #全局替换device_code
+    if [[ $port_mios_version_incremental != *DEV* ]];then
+        sed -i "s/$port_device_code/$base_device_code/g" ${i}
+    fi
+    # 添加build user信息
+    sed -i "s/ro.build.user=.*/ro.build.user=${build_user}/g" ${i}
+    sed -i "s/ro.build.host=.*/ro.build.host=${build_host}/g" ${i}
+    
+done
 
 # 修复各种疑难杂症
+echo "# tosasitill here made with love" >> build/portrom/images/product/etc/build.prop
+echo "ro.miui.cust_erofs=0" >> build/portrom/images/product/etc/build.prop
+echo "# tosasitill here 0202 & 0227" >> build/portrom/images/system/system/build.prop
 echo "ro.crypto.state=encrypted" >> build/portrom/images/system/system/build.prop
 echo "debug.game.video.support=true" >> build/portrom/images/system/system/build.prop
 echo "debug.game.video.speed=true" >> build/portrom/images/system/system/build.prop
@@ -721,6 +746,34 @@ if [[ -d "devices/common" ]];then
     fi
 fi
 
+# 去除avb校验
+blue "去除avb校验" "Disable avb verification."
+for fstab in $(find build/portrom/images/ -type f -name "fstab.*");do
+    blue "Target: $fstab"
+    sed -i "s/,avb_keys=.*avbpubkey//g" $fstab
+    sed -i "s/,avb=vbmeta_system//g" $fstab
+    sed -i "s/,avb=vbmeta_vendor//g" $fstab
+    sed -i "s/,avb=vbmeta//g" $fstab
+    sed -i "s/,avb//g" $fstab
+done
+
+# data 加密
+remove_data_encrypt=$(grep "remove_data_encryption" bin/port_config |cut -d '=' -f 2)
+if [ ${remove_data_encrypt} = "true" ];then
+    blue "去除data加密"
+    for fstab in $(find build/portrom/images -type f -name "fstab.*");do
+		blue "Target: $fstab"
+		sed -i "s/,fileencryption=aes-256-xts:aes-256-cts:v2+inlinecrypt_optimized+wrappedkey_v0//g" $fstab
+		sed -i "s/,fileencryption=aes-256-xts:aes-256-cts:v2+emmc_optimized+wrappedkey_v0//g" $fstab
+		sed -i "s/,fileencryption=aes-256-xts:aes-256-cts:v2//g" $fstab
+		sed -i "s/,metadata_encryption=aes-256-xts:wrappedkey_v0//g" $fstab
+		sed -i "s/,fileencryption=aes-256-xts:wrappedkey_v0//g" $fstab
+		sed -i "s/,metadata_encryption=aes-256-xts//g" $fstab
+		sed -i "s/,fileencryption=aes-256-xts//g" $fstab
+        sed -i "s/,fileencryption=ice//g" $fstab
+		sed -i "s/fileencryption/encryptable/g" $fstab
+	done
+fi
 
 for pname in ${port_partition};do
     rm -rf build/portrom/images/${pname}.img
@@ -881,5 +934,4 @@ if [[ $pack_type == "EROFS" ]];then
     yellow "检测到打包类型为EROFS,请确保官方内核支持，或者在devices机型目录添加有支持EROFS的内核，否者将无法开机！" "EROFS filesystem detected. Ensure compatibility with the official boot.img or ensure a supported boot_tv.img is placed in the device folder."
     pack_type="ROOT_"${pack_type}
 fi
-
 
